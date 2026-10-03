@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Рециклон — Мисия: Рециклиране на ядрено гориво</title>
+<style>
+  :root{
+    --bg1:#060b1f;
+    --bg2:#101c44;
+    --panel:#111a3a;
+    --cyan:#4fc3f7;
+    --cyan-dim:#1b6f94;
+    --blue:#3d7bff;
+    --red:#ef5350;
+    --green:#4caf50;
+    --yellow:#ffca28;
+    --text:#e8f1ff;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(circle at 50% 0%, var(--bg2), var(--bg1) 70%);
+    font-family:'Segoe UI', Tahoma, sans-serif;
+    color:var(--text);
+    touch-action:manipulation;
+  }
+  #game{
+    width:900px;
+    max-width:98vw;
+    border-radius:18px;
+    background:linear-gradient(180deg,#0c1430,#0a1026);
+    border:2px solid var(--cyan-dim);
+    box-shadow:0 0 40px rgba(79,195,247,0.25), inset 0 0 60px rgba(0,0,0,0.5);
+    overflow:hidden;
+    position:relative;
+  }
+  #hud{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 20px;
+    background:rgba(0,0,0,0.35);
+    border-bottom:1px solid var(--cyan-dim);
+  }
+  #stage-title{font-weight:700; font-size:18px; color:var(--cyan); letter-spacing:.5px;}
+  #hud-right{display:flex; gap:18px; align-items:center; font-size:16px;}
+  #score{font-weight:700;}
+  #lives{letter-spacing:3px;}
+
+  .stage{display:none; padding:20px;}
+  .stage.active{display:block;}
+
+  /* ---------- STAGE 1 ---------- */
+  #play-area{
+    position:relative;
+    width:100%;
+    height:520px;
+    border-radius:12px;
+    overflow:hidden;
+    background:
+      linear-gradient(180deg, rgba(79,195,247,0.06), transparent 60%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 2px, transparent 2px 40px),
+      #0a1230;
+    border:1px solid rgba(79,195,247,0.25);
+  }
+  #hot-cell-label{
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    font-size:12px; letter-spacing:3px; color:var(--cyan-dim); text-transform:uppercase;
+  }
+  .bin{
+    position:absolute;
+    bottom:0;
+    width:50%;
+    height:150px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    font-weight:700;
+    text-align:center;
+    transition:filter .15s;
+  }
+  #bin-blue{
+    left:0;
+    background:linear-gradient(180deg, rgba(61,123,255,0.08), rgba(61,123,255,0.35));
+    border-top:3px dashed var(--blue);
+  }
+  #bin-red{
+    right:0;
+    background:linear-gradient(180deg, rgba(239,83,80,0.08), rgba(239,83,80,0.35));
+    border-top:3px dashed var(--red);
+  }
+  .bin-label{font-size:14px; padding:0 10px; line-height:1.3;}
+  .bin.hover{filter:brightness(1.5);}
+
+  .cube{
+    position:absolute;
+    width:52px;
+    height:52px;
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    cursor:grab;
+    user-select:none;
+    touch-action:none;
+    box-shadow:0 4px 10px rgba(0,0,0,0.4);
+    z-index:5;
+  }
+  .cube.blue{background:linear-gradient(145deg,#7fb8ff,#2b5fe0); border:1px solid #9fd0ff;}
+  .cube.red{background:linear-gradient(145deg,#ff8a80,#c22a22); border:1px solid #ffb3ab;}
+  .cube.dragging{cursor:grabbing; z-index:50; filter:drop-shadow(0 0 10px rgba(255,255,255,0.6)); transform:scale(1.08);}
+
+  .feedback{
+    position:fixed;
+    font-weight:800;
+    font-size:20px;
+    pointer-events:none;
+    z-index:999;
+    animation:floatUp 0.9s ease-out forwards;
+  }
+  @keyframes floatUp{
+    0%{opacity:1; transform:translate(-50%,-50%);}
+    100%{opacity:0; transform:translate(-50%,-140%);}
+  }
+
+  #stage1-instructions{
+    margin-top:10px; font-size:13px; color:#9fb3d9; text-align:center;
+  }
+
+  .flash-red{animation:flashRed .3s;}
+  @keyframes flashRed{
+    0%{box-shadow:inset 0 0 0 rgba(239,83,80,0);}
+    50%{box-shadow:inset 0 0 60px rgba(239,83,80,0.6);}
+    100%{box-shadow:inset 0 0 0 rgba(239,83,80,0);}
+  }
+
+  /* ---------- STAGE 2 / 3 / END ---------- */
+  .center-stage{
+    text-align:center;
+    padding:30px 10px;
+  }
+  .center-stage h2{color:var(--cyan); margin-top:0;}
+  #furnace, #reactor{
+    font-size:90px;
+    margin:20px auto;
+    width:160px; height:160px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(255,180,60,0.25), transparent 70%);
+  }
+  #reactor{background:radial-gradient(circle, rgba(79,195,247,0.3), transparent 70%);}
+  .pulsing{animation:pulse 0.6s infinite alternate;}
+  @keyframes pulse{
+    from{transform:scale(1); filter:drop-shadow(0 0 5px var(--cyan));}
+    to{transform:scale(1.12); filter:drop-shadow(0 0 25px var(--cyan));}
+  }
+  .flicker{animation:flicker 0.5s infinite alternate;}
+  @keyframes flicker{
+    from{transform:scale(1);}
+    to{transform:scale(1.08) rotate(2deg);}
+  }
+
+  .btn{
+    background:linear-gradient(180deg, var(--cyan), var(--cyan-dim));
+    color:#06101f;
+    border:none;
+    padding:12px 26px;
+    font-size:15px;
+    font-weight:700;
+    border-radius:10px;
+    cursor:pointer;
+    box-shadow:0 4px 14px rgba(79,195,247,0.35);
+    margin-top:14px;
+  }
+  .btn:disabled{opacity:0.5; cursor:default;}
+  .btn:hover:not(:disabled){filter:brightness(1.1);}
+
+  #progress-bar-container{
+    width:300px; height:16px; margin:16px auto; background:#0a1230;
+    border-radius:8px; overflow:hidden; border:1px solid var(--cyan-dim);
+  }
+  #progress-bar{height:100%; width:0%; background:linear-gradient(90deg,var(--yellow),#ff9800); transition:width 2.2s linear;}
+
+  .result-grid{
+    display:flex; gap:16px; justify-content:center; margin:24px 0; flex-wrap:wrap;
+  }
+  .result-card{
+    background:var(--panel);
+    border:1px solid var(--cyan-dim);
+    border-radius:12px;
+    padding:18px 24px;
+    min-width:160px;
+  }
+  .result-card .big{font-size:28px; font-weight:800; color:var(--yellow);}
+  .result-card .label{font-size:13px; color:#9fb3d9; margin-top:4px;}
+
+  /* ---------- START OVERLAY ---------- */
+  #start-overlay{
+    position:fixed; inset:0;
+    background:rgba(4,7,20,0.92);
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    z-index:1000; text-align:center; padding:20px;
+  }
+  #start-overlay h1{color:var(--cyan); margin-bottom:6px;}
+  #start-overlay p{max-width:480px; color:#c7d6f5; line-height:1.5;}
+  #start-overlay .btn{margin-top:20px;}
+</style>
+</head>
+<body>
+
+<div id="start-overlay">
+  <h1>⚛️ Рециклон</h1>
+  <h3>Мисия: Рециклиране на отработено ядрено гориво</h3>
+  <p>
+    Етап 1: Хвани падащите кубчета с мишката (натисни и задръж) и ги пусни в правилния
+    контейнер — <b style="color:#7fb8ff">синьо</b> = ценен материал за рециклиране,
+    <b style="color:#ff8a80">червено</b> = опасен отпадък. Пропуснат кубчета или грешно
+    сортиране костват живот ❤️.
+  </p>
+  <button class="btn" id="start-btn">Старт на мисията</button>
+</div>
+
+<div id="game">
+  <div id="hud">
+    <div id="stage-title">Етап 1: Разделяне на отпадъци</div>
+    <div id="hud-right">
+      <div id="score">Точки: 0</div>
+      <div id="lives">❤️❤️❤️</div>
+    </div>
+  </div>
+
+  <!-- STAGE 1 -->
+  <div class="stage active" id="stage1">
+    <div id="play-area">
+      <div id="hot-cell-label">Hot Cell — Сортиране</div>
+      <div class="bin" id="bin-blue"><div class="bin-label">♻️<br>Ценен материал</div></div>
+      <div class="bin" id="bin-red"><div class="bin-label">☢️<br>Опасни отпадъци</div></div>
+    </div>
+    <div id="stage1-instructions">Хвани и пусни кубчетата в правилния контейнер. Нужни са <b id="target-label">10</b> успешни сортирания.</div>
+  </div>
+
+  <!-- STAGE 2 -->
+  <div class="stage center-stage" id="stage2">
+    <h2>Етап 2: Създаване на ново гориво</h2>
+    <p>Събрани ценни материали: <b id="collected-count">0</b> / <span id="collected-target">10</span></p>
+    <div id="furnace">🔥</div>
+    <div>
+      <button class="btn" id="process-btn">Постави в пиропреработваща пещ</button>
+    </div>
+    <div id="progress-bar-container"><div id="progress-bar"></div></div>
+    <p id="stage2-info" style="display:none; color:var(--green); font-weight:700;">
+      ✅ Материалът е преработен в рециклирано MOX гориво!
+    </p>
+    <button class="btn" id="to-stage3-btn" style="display:none">Продължи към Етап 3 →</button>
+  </div>
+
+  <!-- STAGE 3 -->
+  <div class="stage center-stage" id="stage3">
+    <h2>Етап 3: Енергия за бъдещето!</h2>
+    <div id="reactor">⚛️</div>
+    <div>
+      <button class="btn" id="load-btn">Зареди касетата в реактора</button>
+    </div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div class="stage center-stage" id="end-screen">
+    <h2>🌍 Мисията е изпълнена!</h2>
+    <p>Благодарение на теб, отработеното гориво беше рециклирано безопасно.</p>
+    <div class="result-grid">
+      <div class="result-card">
+        <div class="big" id="final-score">0</div>
+        <div class="label">Точки</div>
+      </div>
+      <div class="result-card">
+        <div class="big" id="energy-saved">0</div>
+        <div class="label">kWh спасена енергия</div>
+      </div>
+      <div class="result-card">
+        <div class="big" id="co2-saved">0</div>
+        <div class="label">kg спестени CO₂ емисии</div>
+      </div>
+    </div>
+    <button class="btn" id="restart-btn">Играй отново</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- STATE ----------
+  var score = 0;
+  var lives = 3;
+  var correctSorts = 0;
+  var TARGET_SORTS = 10;
+  var cubes = [];
+  var spawnTimer = null;
+  var animFrame = null;
+  var baseFallSpeed = 1.1;
+  var spawnIntervalMs = 1300;
+  var stage1Running = false;
+
+  var playArea = document.getElementById('play-area');
+  var binBlue = document.getElementById('bin-blue');
+  var binRed = document.getElementById('bin-red');
+
+  document.getElementById('target-label').textContent = TARGET_SORTS;
+  document.getElementById('collected-target').textContent = TARGET_SORTS;
+
+  // ---------- HUD ----------
+  function updateHUD(){
+    document.getElementById('score').textContent = 'Точки: ' + score;
+    var hearts = '';
+    for(var i=0;i<lives;i++) hearts += '❤️';
+    for(var j=lives;j<3;j++) hearts += '🖤';
+    document.getElementById('lives').textContent = hearts;
+  }
+
+  function flashDamage(){
+    var game = document.getElementById('game');
+    game.classList.remove('flash-red');
+    void game.offsetWidth; // restart animation
+    game.classList.add('flash-red');
+  }
+
+  function showFeedback(x, y, text, color){
+    var el = document.createElement('div');
+    el.className = 'feedback';
+    el.textContent = text;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.color = color;
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 900);
+  }
+
+  // ---------- STAGE NAVIGATION ----------
+  function showStageEl(id){
+    var stages = document.querySelectorAll('.stage');
+    for(var i=0;i<stages.length;i++) stages[i].classList.remove('active');
+    document.getElementById(id).classList.add('active');
+  }
+
+  // ---------- STAGE 1: SORTING ----------
+  function startStage1(){
+    document.getElementById('stage-title').textContent = 'Етап 1: Разделяне на отпадъци';
+    showStageEl('stage1');
+    stage1Running = true;
+    clearCubes();
+    spawnTimer = setInterval(spawnCube, spawnIntervalMs);
+    animFrame = requestAnimationFrame(gameLoop);
+  }
+
+  function clearCubes(){
+    cubes.forEach(function(c){ if(c.el && c.el.parentNode) c.el.remove(); });
+    cubes = [];
+  }
+
+  function spawnCube(){
+    if(!stage1Running) return;
+    var type = Math.random() < 0.5 ? 'blue' : 'red';
+    var el = document.createElement('div');
+    el.className = 'cube ' + type;
+    el.textContent = type === 'blue' ? '⚙️' : '☣️';
+    var zoneWidth = playArea.clientWidth;
+    var x = 16 + Math.random() * (zoneWidth - 68);
+    el.style.left = x + 'px';
+    el.style.top = '-60px';
+    playArea.appendChild(el);
+
+    var speedBoost = Math.floor(correctSorts / 3) * 0.25;
+    var cubeObj = {
+      el: el, type: type, x: x, y: -60,
+      dragging: false, removed: false,
+      speed: baseFallSpeed + Math.random() * 0.4 + speedBoost
+    };
+    cubes.push(cubeObj);
+    attachDragHandlers(cubeObj);
+  }
+
+  function attachDragHandlers(c){
+    c.el.addEventListener('pointerdown', function(e){
+      c.dragging = true;
+      try{ c.el.setPointerCapture(e.pointerId); }catch(err){}
+      c.el.classList.add('dragging');
+    });
+    c.el.addEventListener('pointermove', function(e){
+      if(!c.dragging) return;
+      var rect = playArea.getBoundingClientRect();
+      var nx = e.clientX - rect.left - 26;
+      var ny = e.clientY - rect.top - 26;
+      c.x = nx; c.y = ny;
+      c.el.style.left = nx + 'px';
+      c.el.style.top = ny + 'px';
+      updateBinHover(e.clientX, e.clientY);
+    });
+    c.el.addEventListener('pointerup', function(e){
+      if(!c.dragging) return;
+      c.dragging = false;
+      c.el.classList.remove('dragging');
+      clearBinHover();
+      handleDrop(c, e.clientX, e.clientY);
+    });
+  }
+
+  function pointInRect(px, py, rect){
+    return px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom;
+  }
+
+  function updateBinHover(px, py){
+    binBlue.classList.toggle('hover', pointInRect(px, py, binBlue.getBoundingClientRect()));
+    binRed.classList.toggle('hover', pointInRect(px, py, binRed.getBoundingClientRect()));
+  }
+  function clearBinHover(){
+    binBlue.classList.remove('hover');
+    binRed.classList.remove('hover');
+  }
+
+  function handleDrop(c, px, py){
+    var dropped = null;
+    if(pointInRect(px, py, binBlue.getBoundingClientRect())) dropped = 'blue';
+    else if(pointInRect(px, py, binRed.getBoundingClientRect())) dropped = 'red';
+
+    if(!dropped) return; // keeps falling from current position
+
+    if(dropped === c.type){
+      score += 10;
+      correctSorts++;
+      showFeedback(px, py, '+10', '#4caf50');
+    } else {
+      score = Math.max(0, score - 5);
+      lives--;
+      showFeedback(px, py, '-5', '#ef5350');
+      flashDamage();
+    }
+    removeCube(c);
+    updateHUD();
+
+    if(lives <= 0){ endStage1(false); return; }
+    if(correctSorts >= TARGET_SORTS){ endStage1(true); return; }
+  }
+
+  function removeCube(c){
+    c.removed = true;
+    if(c.el && c.el.parentNode) c.el.remove();
+    cubes = cubes.filter(function(x){ return x !== c; });
+  }
+
+  function missCube(c){
+    removeCube(c);
+    lives--;
+    flashDamage();
+    updateHUD();
+    if(lives <= 0) endStage1(false);
+  }
+
+  function gameLoop(){
+    if(!stage1Running) return;
+    var zoneHeight = playArea.clientHeight;
+    var snapshot = cubes.slice();
+    for(var i=0;i<snapshot.length;i++){
+      var c = snapshot[i];
+      if(c.removed || c.dragging) continue;
+      c.y += c.speed;
+      c.el.style.top = c.y + 'px';
+      if(c.y > zoneHeight - 70){
+        missCube(c);
+      }
+    }
+    animFrame = requestAnimationFrame(gameLoop);
+  }
+
+  function endStage1(won){
+    stage1Running = false;
+    clearInterval(spawnTimer);
+    cancelAnimationFrame(animFrame);
+    clearCubes();
+    if(won){
+      setTimeout(function(){
+        document.getElementById('collected-count').textContent = Math.min(correctSorts, TARGET_SORTS);
+        startStage2();
+      }, 600);
+    } else {
+      setTimeout(function(){
+        alert('Опа! Свършиха животите. Опитай отново Етап 1.');
+        resetGame();
+      }, 300);
+    }
+  }
+
+  // ---------- STAGE 2: FURNACE ----------
+  function startStage2(){
+    document.getElementById('stage-title').textContent = 'Етап 2: Създаване на ново гориво';
+    showStageEl('stage2');
+    document.getElementById('process-btn').disabled = false;
+    document.getElementById('process-btn').style.display = 'inline-block';
+    document.getElementById('progress-bar').style.width = '0%';
+    document.getElementById('stage2-info').style.display = 'none';
+    document.getElementById('to-stage3-btn').style.display = 'none';
+    document.getElementById('furnace').classList.remove('flicker');
+  }
+
+  document.getElementById('process-btn').addEventListener('click', function(){
+    var btn = this;
+    btn.disabled = true;
+    document.getElementById('furnace').classList.add('flicker');
+    var bar = document.getElementById('progress-bar');
+    requestAnimationFrame(function(){ bar.style.width = '100%'; });
+    setTimeout(function(){
+      document.getElementById('furnace').classList.remove('flicker');
+      document.getElementById('stage2-info').style.display = 'block';
+      document.getElementById('to-stage3-btn').style.display = 'inline-block';
+      btn.style.display = 'none';
+    }, 2300);
+  });
+
+  document.getElementById('to-stage3-btn').addEventListener('click', startStage3);
+
+  // ---------- STAGE 3: REACTOR ----------
+  function startStage3(){
+    document.getElementById('stage-title').textContent = 'Етап 3: Енергия за бъдещето';
+    showStageEl('stage3');
+    document.getElementById('load-btn').disabled = false;
+    document.getElementById('load-btn').style.display = 'inline-block';
+    document.getElementById('reactor').classList.remove('pulsing');
+  }
+
+  document.getElementById('load-btn').addEventListener('click', function(){
+    var btn = this;
+    btn.disabled = true;
+    document.getElementById('reactor').classList.add('pulsing');
+    setTimeout(function(){
+      showEndScreen();
+    }, 1800);
+  });
+
+  // ---------- END SCREEN ----------
+  function showEndScreen(){
+    document.getElementById('stage-title').textContent = 'Мисия завършена';
+    showStageEl('end-screen');
+    var sorted = Math.min(correctSorts, TARGET_SORTS);
+    var energySaved = sorted * 45;     // illustrative kWh per unit recycled
+    var co2Saved = sorted * 2.3;       // illustrative kg CO2 per unit recycled
+    document.getElementById('final-score').textContent = score;
+    document.getElementById('energy-saved').textContent = energySaved;
+    document.getElementById('co2-saved').textContent = co2Saved.toFixed(1);
+  }
+
+  document.getElementById('restart-btn').addEventListener('click', resetGame);
+
+  // ---------- RESET ----------
+  function resetGame(){
+    score = 0; lives = 3; correctSorts = 0;
+    updateHUD();
+    startStage1();
+  }
+
+  // ---------- START ----------
+  document.getElementById('start-btn').addEventListener('click', function(){
+    document.getElementById('start-overlay').style.display = 'none';
+    updateHUD();
+    startStage1();
+  });
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Цифров близнак — Рециклиране на ядрено гориво</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="offline-banner" class="hidden">
+  ⚠ Няма връзка с backend-а — стартирай FastAPI сървъра (вътре в <b>backend/</b>: <code>uvicorn main:app --reload</code>)
+</div>
+
+<div id="hud">
+  <div id="hud-panel">
+    <div id="stage-name">STANDBY</div>
+    <div id="hud-stats">
+      <div class="stat">
+        <span class="stat-label">Температура</span>
+        <span class="stat-value" id="temp-value">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Скорост на процеса</span>
+        <span class="stat-value" id="speed-value">1.00x</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Ефективност (MOX)</span>
+        <span class="stat-value" id="eff-value">0%</span>
+      </div>
+    </div>
+    <div id="progress-wrap">
+      <div id="progress-bar"></div>
+    </div>
+    <div id="progress-label">0%</div>
+  </div>
+</div>
+
+<div id="hud-bottom">
+  <span class="key"><kbd>SPACE</kbd> Старт на цикъла</span>
+  <span class="key"><kbd>↑</kbd> / <kbd>↓</kbd> Скорост / охлаждане</span>
+  <span class="key"><kbd>V</kbd> Проветряване (само при разтваряне)</span>
+  <span class="key"><kbd>R</kbd> Нулиране</span>
+  <span class="live-tag"><span class="dot"></span>LIVE изчисления от Python / FastAPI backend</span>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="main.js"></script>
+</body>
+</html>
